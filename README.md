@@ -1,35 +1,47 @@
 # AI Chat Service
 
-Take-home: FastAPI + OpenAI Agents SDK + PostgreSQL + SSE streaming.
+FastAPI + OpenAI Agents SDK + PostgreSQL + SSE streaming
 
-## RUN (development)
+## Quick Start
 
 ```bash
-cd Demo_AI_AGENT
-pip install -r requirements.txt
-uvicorn app.main:app --reload --port 8000
+# 1. Run containers
+docker compose up --build
+
+# 2. Setup database (first time only)
+docker exec -it demo_ai_agent-api-1 bash
+alembic init alembic
+python setup_alembic.py
+alembic revision --autogenerate -m "Initial migration"
+alembic upgrade head
+exit
+
+# 3. Check database
+docker exec -it demo_ai_agent-postgres-1 psql -U chat -d chatdb
+\dt
+\q
 ```
 
+**Access:**
 - API: http://127.0.0.1:8000
 - Docs: http://127.0.0.1:8000/docs
+- Database: localhost:5432 (user: `chat`, db: `chatdb`)
 
-## Docker
+## Development
 
 ```bash
-docker compose up --build
+# After changing models:
+docker exec -it demo_ai_agent-api-1 alembic revision --autogenerate -m "Your changes"
+docker exec -it demo_ai_agent-api-1 alembic upgrade head
 ```
 
-- API: http://127.0.0.1:8000
-- Postgres: localhost:5432 (user `chat`, db `chatdb`)
-
-## Structre
+## Project Structure
 
 ```
 app/
   main.py           # FastAPI app
-  api/v1/
-    router.py       # Mount /api/v1
-    health.py       # GET /api/v1/health
-    chat.py         # POST /api/v1/chat/stream (stub)
-    sessions.py     # GET/DELETE /api/v1/sessions/{id}... (stub)
+  database.py       # Database config
+  models.py         # SQLAlchemy models
+  api/v1/           # API endpoints (health, chat, sessions)
+alembic/            # Database migrations
 ```

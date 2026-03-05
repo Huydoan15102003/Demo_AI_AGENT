@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      # TODO: DATABASE_URL when we add SQLAlchemy
+      DATABASE_URL: postgresql+asyncpg://chat:chat@postgres:5432/chatdb
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       postgres:
