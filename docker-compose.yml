@@ -37,7 +37,12 @@ services:
         echo 'Waiting for database...' &&
         sleep 5 &&
         echo 'Running migrations...' &&
-        alembic upgrade head &&
+        alembic upgrade head || (
+          echo 'Migration failed, resetting database...' &&
+          PGPASSWORD=chat psql -h postgres -U chat -d chatdb -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' &&
+          echo 'Applying fresh migration...' &&
+          alembic upgrade head
+        ) &&
         echo 'Starting FastAPI server...' &&
         uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
       "
