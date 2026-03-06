@@ -67,7 +67,23 @@ You should get a successful response (e.g. `200 OK`).
 curl -X POST http://localhost:8000/api/v1/chat/stream \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
-  -d '{"session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "user-123", "message": "Hello!"}'
+  -d '{"session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "user-123", "message": "Hello! My name is Alex."}'
+```
+
+### Test conversation memory
+
+```bash
+# First message
+curl -X POST http://localhost:8000/api/v1/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "user-123", "message": "Hello! My name is Alex."}'
+
+# Second message (should remember the name)
+curl -X POST http://localhost:8000/api/v1/chat/stream \
+  -H "Content-Type: application/json" \
+  -H "Accept: text/event-stream" \
+  -d '{"session_id": "550e8400-e29b-41d4-a716-446655440000", "user_id": "user-123", "message": "What is my name?"}'
 ```
 
 ### Get session history

@@ -27,13 +27,34 @@ async def chat_stream(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
             db, payload.session_id, payload.user_id
         )
         
-        # 2. Save user message
+        # 2. Get conversation history (before adding new message)
+        session_with_history = await DatabaseService.get_session_history(
+            db, session.id, payload.user_id
+        )
+        
+        # 3. Build conversation messages list
+        conversation_messages = []
+        if session_with_history and session_with_history.messages:
+            # Add existing messages to conversation
+            for msg in sorted(session_with_history.messages, key=lambda m: m.created_at):
+                conversation_messages.append({
+                    "role": msg.role.value,  # "user" or "assistant"
+                    "content": msg.content
+                })
+        
+        # 4. Add current user message to conversation
+        conversation_messages.append({
+            "role": "user",
+            "content": payload.message
+        })
+        
+        # 5. Save user message to DB
         await DatabaseService.save_message(
             db, session.id, MessageRole.USER, payload.message
         )
         
-        # 3. Run agent streaming
-        run_result = run_agent_stream(payload.message)
+        # 6. Run agent streaming with full conversation history
+        run_result = run_agent_stream(conversation_messages)
 
         async def event_generator():
             assistant_response = ""
@@ -58,7 +79,7 @@ async def chat_stream(payload: ChatRequest, db: AsyncSession = Depends(get_db)):
                         yield f'data: {json.dumps({"timestamp": current_time})}\n\n'
                         last_heartbeat = current_time
                 
-                # 4. Save assistant response to DB
+                # 7. Save assistant response to DB
                 if assistant_response.strip():
                     await DatabaseService.save_message(
                         db, session.id, MessageRole.ASSISTANT, assistant_response
