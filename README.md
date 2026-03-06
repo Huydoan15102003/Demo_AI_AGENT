@@ -145,7 +145,22 @@ docker exec -it chat_postgres psql -U chat -d chatdb -c "SELECT role, COUNT(*) F
 
 ---
 
-## 6. Development (optional)
+## 6. Running Tests
+
+```bash
+# Run all tests
+docker exec -it chat_api pytest -v
+
+# Run specific test types
+docker exec -it chat_api pytest tests/test_chat_unit.py        # Unit tests
+docker exec -it chat_api pytest tests/test_chat_integration.py # Integration tests
+```
+
+**Test coverage:** Unit tests (SSE events, mocked agent) + Integration tests (DB persistence, mocked LLM)
+
+---
+
+## 7. Development (optional)
 
 ```bash
 # View API logs
@@ -161,29 +176,45 @@ docker exec -it chat_api alembic upgrade head
 
 ---
 
-## 7. Project Structure
+## 8. Project Structure
 
 ```
 app/
 ├── main.py              # FastAPI app
-├── agent.py             # OpenAI Agents SDK
+├── agent.py             # OpenAI Agents SDK + conversation history
 ├── database.py          # DB connection
 ├── models.py            # SQLAlchemy models
 ├── services/
-│   └── database_service.py
+│   └── database_service.py  # CRUD operations
 └── api/v1/
     ├── router.py
     ├── chat.py          # Chat streaming + persistence
     ├── sessions.py      # Session history & delete
     └── health.py
 alembic/                 # Migrations (auto-recovery on startup)
+tests/
+├── conftest.py          # Test fixtures and database setup
+├── test_chat_unit.py    # Unit tests (SSE events, mocked agent)
+└── test_chat_integration.py  # Integration tests (DB persistence, real DB)
 ```
 
 ---
 
 ## Features
 
-- **AI Agent**: OpenAI Agents SDK, streaming responses  
-- **Real-time**: SSE streaming  
-- **Persistent chat**: PostgreSQL, scoped by user and session  
+- **AI Agent**: OpenAI Agents SDK with conversation history and streaming responses  
+- **Real-time**: SSE streaming with delta events and heartbeat  
+- **Persistent chat**: PostgreSQL storage, scoped by user and session  
+- **Conversation memory**: Agent receives full chat history for context  
 - **Migrations**: Alembic with auto-recovery when starting via Docker  
+- **Test coverage**: Unit tests (SSE events) and integration tests (DB persistence)
+
+---
+
+## Design Choices & Trade-offs
+
+**Architecture & Streaming**: Chose FastAPI with async/await for efficient handling of concurrent SSE streams and database operations. Implemented character-by-character streaming to provide immediate user feedback, though this increases the number of events compared to word-level chunking. The trade-off prioritizes user experience over network efficiency.
+
+**Database Design**: Used a normalized schema with separate `chat_sessions` and `chat_messages` tables for data integrity and flexibility. Session scoping by both `session_id` and `user_id` ensures security but requires careful ownership validation. Chose PostgreSQL over simpler alternatives for ACID compliance and UUID support, accepting slightly more complex deployment in exchange for production-ready data consistency.
+
+**Conversation Context**: Implemented conversation history by concatenating previous messages as context for the agent, rather than using a more sophisticated context window management. This simple approach works well for typical chat lengths but could hit token limits for very long conversations. Added auto-migration recovery to handle deployment issues gracefully, trading some operational control for developer convenience during the assignment evaluation process.
